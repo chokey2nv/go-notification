@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package notification.v1;
+
+option go_package = "api/grpc/gen;gen";
+
+import "google/protobuf/timestamp.proto";
+
+enum Channel {
+  CHANNEL_UNSPECIFIED = 0;
+  CHANNEL_EMAIL       = 1;
+  CHANNEL_SMS         = 2;
+  CHANNEL_PUSH        = 3;
+}
+
+message CreateNotificationRequest {
+  string              user_id     = 1;
+  string              title       = 2;
+  string              message     = 3;
+  string              template_id = 4;
+  repeated Channel    channels    = 5;
+  map<string, string> metadata    = 6;
+}
+
+message Notification {
+  string                    id         = 1;
+  string                    user_id    = 2;
+  string                    title      = 3;
+  string                    message    = 4;
+  repeated Channel          channels   = 5;
+  map<string, string>       metadata   = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message GetByIDRequest {
+  string id = 1;
+}
+
+message GetByUserRequest {
+  string user_id = 1;
+}
+
+message ListNotificationsResponse {
+  repeated Notification items = 1;
+}
+
+service NotificationService {
+  rpc Create(CreateNotificationRequest) returns (Notification);
+  rpc GetByID(GetByIDRequest) returns (Notification);
+  rpc GetByUser(GetByUserRequest) returns (ListNotificationsResponse);
+}
