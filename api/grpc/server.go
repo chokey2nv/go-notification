@@ -103,3 +103,24 @@ func mapError(err error) error {
 		return status.Error(codes.Internal, err.Error())
 	}
 }
+func mapDomainChannels(
+	channels []domain.Channel,
+) []gen.Channel {
+
+	out := make([]gen.Channel, 0, len(channels))
+
+	for _, ch := range channels {
+		switch ch {
+		case domain.ChannelEmail:
+			out = append(out, gen.Channel_CHANNEL_EMAIL)
+		case domain.ChannelSMS:
+			out = append(out, gen.Channel_CHANNEL_SMS)
+		case domain.ChannelPush:
+			out = append(out, gen.Channel_CHANNEL_PUSH)
+		default:
+			out = append(out, gen.Channel_CHANNEL_UNSPECIFIED)
+		}
+	}
+
+	return out
+}

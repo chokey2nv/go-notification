@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"log"
 
 	"github.com/chokey2nv/go-notification/api/grpc/gen"
 	"google.golang.org/grpc"
@@ -9,7 +10,7 @@ import (
 )
 
 func connectGrpc() {
-	conn, _ := grpc.Dial(":9090", grpc.WithInsecure())
+	conn, _ := grpc.NewClient(":9090", grpc.WithInsecure())
 	client := gen.NewNotificationServiceClient(conn)
 
 	md := metadata.New(map[string]string{
@@ -30,5 +31,8 @@ func connectGrpc() {
 			"name": "John",
 		},
 	})
+
+	log.Println(resp)
+	log.Println(err)
 
 }
