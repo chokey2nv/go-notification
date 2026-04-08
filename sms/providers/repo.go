@@ -46,7 +46,7 @@ type RecipientResult struct {
 
 type Hooks struct {
 	OnRequest  func(*http.Request)
-	OnResponse func(*http.Response, time.Duration)
+	OnResponse func([]byte, time.Duration)
 	OnError    func(error)
 }
 

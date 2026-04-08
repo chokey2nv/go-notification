@@ -3,9 +3,11 @@ package providers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -166,8 +168,11 @@ func (p *AfricasTalkingProvider) SendSMS(
 			continue
 		}
 
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 		if p.hooks != nil && p.hooks.OnResponse != nil {
-			p.hooks.OnResponse(resp, time.Since(start))
+			p.hooks.OnResponse(bodyBytes, time.Since(start))
 		}
 
 		// Retry on 5xx
@@ -191,11 +196,40 @@ func (p *AfricasTalkingProvider) SendSMS(
 		}
 	}
 
-	var atResp africasTalkingResponse
-	if err := json.NewDecoder(resp.Body).Decode(&atResp); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	cleanBody := strings.TrimSpace(string(responseBody))
+	finalBody := []byte(cleanBody)
+
+	// Attempt Base64 decode ONLY if it looks like Base64
+	if isBase64(cleanBody) {
+		decoded, err := base64.StdEncoding.DecodeString(cleanBody)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"decode response: %w | raw: %s",
+				err,
+				string(finalBody),
+			)
+		}
+		if len(decoded) > 0 {
+			finalBody = decoded
+		}
+	}
+
+	// Unmarshal response
+	var atResp africasTalkingResponse
+	if err := json.Unmarshal(finalBody, &atResp); err != nil {
+		return nil, fmt.Errorf(
+			"unmarshal response: %w | raw: %s",
+			err,
+			string(finalBody),
+		)
+	}
+
+	// Handle API-level errors
 	if atResp.Error != "" {
 		return nil, &ProviderError{
 			StatusCode: resp.StatusCode,
@@ -203,8 +237,17 @@ func (p *AfricasTalkingProvider) SendSMS(
 		}
 	}
 
+	// Handle known AT error pattern
+	if atResp.SMSMessageData != nil &&
+		strings.Contains(strings.ToLower(atResp.SMSMessageData.Message), "invalidsenderid") {
+		return nil, &ProviderError{
+			StatusCode: resp.StatusCode,
+			Err:        errors.New("africastalking: invalid sender ID"),
+		}
+	}
+
 	if atResp.SMSMessageData == nil {
-		return nil, errors.New("invalid response: missing SMSMessageData")
+		return nil, fmt.Errorf("invalid response: missing SMSMessageData | raw: %s", string(finalBody))
 	}
 
 	return p.buildResult(atResp)
@@ -252,6 +295,18 @@ func (p *AfricasTalkingProvider) buildResult(atResp africasTalkingResponse) (*SM
 	}
 
 	return result, nil
+}
+func isBase64(s string) bool {
+	// Quick heuristic:
+	// - length must be multiple of 4
+	// - must not contain JSON indicators
+	if len(s)%4 != 0 {
+		return false
+	}
+	if strings.ContainsAny(s, "{}[]:\"") {
+		return false
+	}
+	return true
 }
 
 func (p *AfricasTalkingProvider) backoff(attempt int) {

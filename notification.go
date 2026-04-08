@@ -1,4 +1,4 @@
-package notification
+package main
 
 import (
 	"github.com/chokey2nv/go-notification/dispatcher"

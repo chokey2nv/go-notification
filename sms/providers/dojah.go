@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -47,7 +48,6 @@ type DojahConfig struct {
 	Retries    int
 	Workers    int
 }
-
 
 // --------------------
 // Constructor
@@ -237,8 +237,11 @@ func (p *DojahProvider) sendToRecipient(
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	if p.hooks != nil && p.hooks.OnResponse != nil {
-		p.hooks.OnResponse(resp, time.Since(start))
+		p.hooks.OnResponse(bodyBytes, time.Since(start))
 	}
 
 	if resp.StatusCode >= 300 {
