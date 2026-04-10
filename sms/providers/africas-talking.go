@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/chokey2nv/go-notification/helpers"
 )
 
 const africasTalkingDefaultURL = "https://api.africastalking.com/version1/messaging/bulk"
@@ -189,12 +191,12 @@ func (p *AfricasTalkingProvider) SendSMS(
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, &ProviderError{
-			StatusCode: resp.StatusCode,
-			Err:        errors.New("non-2xx response"),
-		}
-	}
+	// if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	// 	return nil, &ProviderError{
+	// 		StatusCode: resp.StatusCode,
+	// 		Err:        errors.New("non-2xx response"),
+	// 	}
+	// }
 
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -203,6 +205,9 @@ func (p *AfricasTalkingProvider) SendSMS(
 
 	cleanBody := strings.TrimSpace(string(responseBody))
 	finalBody := []byte(cleanBody)
+
+	helpers.Errorf(cleanBody)
+	helpers.Errorf(helpers.ToJSONString(cleanBody))
 
 	// Attempt Base64 decode ONLY if it looks like Base64
 	if isBase64(cleanBody) {
