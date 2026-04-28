@@ -118,7 +118,7 @@ func (p *AfricasTalkingProvider) SendSMS(
 		return nil, errors.New("no phone numbers provided")
 	}
 
-	senderID := strings.TrimSpace(sender)
+	senderID := strings.TrimSpace(p.senderID)
 	if senderID == "" {
 		senderID = p.senderID
 	}
